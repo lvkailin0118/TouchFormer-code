@@ -61,7 +61,6 @@ def eval_epoch(model, criterion, loader, device):
     return avg_loss, acc, f1
 
 def main():
-    # —— 1) 解析命令行 / 配置 —— 
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path',  type=str, default='/home/manager/lkl/AAAI26_Multimodal/dataset/m1474014/CBM_FinalDatabase')
@@ -78,7 +77,7 @@ def main():
 
     device = torch.device('cuda' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
-    # —— 2) 构造 Dataset & DataLoader —— 
+    # Dataset & DataLoader —— 
     train_ds = get_data(args, split='train')
     test_ds  = get_data(args, split='test')
 
@@ -99,14 +98,10 @@ def main():
         pin_memory=True
     )
 
-    # —— 3) 构造模型 —— 
-    # 把原始 MFCC 维度告诉模型
-    # CBMDataset 输出的是 [B,T,MFCC_DIM]，所以 orig_d_* = MFCC_DIM
     args.orig_d_s   = 24
     args.orig_d_nF  = 24
     args.orig_d_fF  = 24
     args.orig_d_acc = 24
-    # 还要把类别数告诉模型
     args.output_dim = len(train_ds.dataset.class2idx)
 
     model = MULT4Model(args).to(device)
@@ -117,7 +112,6 @@ def main():
 
     best_val_f1 = 0.0
 
-    # —— 4) 训练循环 —— 
     for epoch in range(1, args.epochs+1):
         start = time.time()
         train_loss, train_acc, train_f1 = train_epoch(model, optimizer, criterion, train_loader, device)
@@ -131,12 +125,10 @@ def main():
               f"TrLoss {train_loss:.4f}  TrF1 {train_f1:.4f}  "
               f"VaLoss {val_loss:.4f}  VaF1 {val_f1:.4f}")
 
-        # 保存最优
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             save_model(args, model, name='best')
 
-    # —— 5) 测试 & 报告 —— 
     print("=== Final Evaluation on Test Fold ===")
     test_loss, test_acc, test_f1 = eval_epoch(model, criterion, test_loader, device)
     print(f"Test Loss {test_loss:.4f}  Test F1 {test_f1:.4f}")
